@@ -243,103 +243,110 @@ LEFT JOIN ORDERS o
 
 -- Schemawise
 
---Raeligh 
+--DCND
+
 SELECT * FROM (
 
     -- =============================================
     -- Source 1: REFERRALAPPOINTMENTLINK
+    -- REFERRALAPPOINTMENTLINK: dcnd, raleigh, tncpa, tng-athenaone
+    -- APPOINTMENT:             dcnd, raleigh, tncpa
+    -- REFERRALAUTHDIAGNOSISCODE: dcnd, raleigh, tncpa, tng-athenaone
+    -- REFERRALAUTHPROCEDURECODE: dcnd, raleigh, tncpa, tng-athenaone
     -- =============================================
     SELECT
-        ral.REFERRALID                              AS referral_id,
-        NULL                                        AS ndid,
-        NULL                                        AS encounter_id,
-        NULL                                        AS referral_type,
-        NULL                                        AS referral_direction,
-        NULL                                        AS referral_status,
-        NULL                                        AS referral_priority,
-        NULL                                        AS referral_date,
-        NULL                                        AS scheduled_appointment_date,
-        ral.APPOINTMENTID                           AS appointment_id,
-        NULL                                        AS completed_date,
-        NULL                                        AS referring_provider_id,
-        NULL                                        AS referring_provider_name,
-        NULL                                        AS referred_to_provider_id,
-        NULL                                        AS referred_to_provider_name,
-        NULL                                        AS referred_to_specialty,
-        NULL                                        AS referral_reason,
-        NULL                                        AS chief_complaint,
-        rdiag.DIAGNOSISCODE                         AS diagnosis_code,
-        rproc.PROCEDURECODE                         AS service_procedure_code,
-        NULL                                        AS clinical_summary,
-        NULL                                        AS requested_service,
-        NULL                                        AS authorization_required,
+        ral.REFERRALID                          AS referral_id,
+        ap.PATIENT_ID                           AS ndid,
+        NULL                                    AS encounter_id,
+        NULL                                    AS referral_type,
+        NULL                                    AS referral_direction,
+        NULL                                    AS referral_status,
+        NULL                                    AS referral_priority,
+        NULL                                    AS referral_date,
+        ap.APPOINTMENT_DATE                     AS scheduled_appointment_date,
+        COALESCE(
+            ral.APPOINTMENTID,
+            ap.APPOINTMENT_ID
+        )                                       AS appointment_id,
+        NULL                                    AS completed_date,
+        NULL                                    AS referring_provider_id,
+        NULL                                    AS referring_provider_name,
+        NULL                                    AS referred_to_provider_id,
+        NULL                                    AS referred_to_provider_name,
+        NULL                                    AS referred_to_specialty,
+        NULL                                    AS referral_reason,
+        NULL                                    AS chief_complaint,
+        rdiag.DIAGNOSISCODE                     AS diagnosis_code,
+        rproc.PROCEDURECODE                     AS service_procedure_code,
+        NULL                                    AS clinical_summary,
+        NULL                                    AS requested_service,
+        NULL                                    AS authorization_required,
         COALESCE(
             rdiag.REFERRALAUTHID,
             rproc.REFERRALAUTHID
-        )                                           AS authorization_number,
-        NULL                                        AS patient_contacted,
-        NULL                                        AS specialist_report_received,
-        NULL                                        AS specialist_report_text,
-        NULL                                        AS follow_up_required,
-        NULL                                        AS referral_loop_closed,
-        NULL                                        AS out_of_network_flag,
-        NULL                                        AS patient_declined_flag,
-        'REFERRALAPPOINTMENTLINK'                   AS data_source
+        )                                       AS authorization_number,
+        NULL                                    AS patient_contacted,
+        NULL                                    AS specialist_report_received,
+        NULL                                    AS specialist_report_text,
+        NULL                                    AS follow_up_required,
+        NULL                                    AS referral_loop_closed,
+        NULL                                    AS out_of_network_flag,
+        NULL                                    AS patient_declined_flag,
+        'REFERRALAPPOINTMENTLINK'               AS data_source
 
-    FROM raleigh.REFERRALAPPOINTMENTLINK ral
-    LEFT JOIN raleigh.REFERRALAUTHDIAGNOSISCODE rdiag
+    FROM dcnd.REFERRALAPPOINTMENTLINK ral           -- also: raleigh, tncpa, tng-athenaone, tng_athena_one
+    LEFT JOIN dcnd.APPOINTMENT ap                   -- also: raleigh, tncpa, tng_athena_one
+        ON ap.APPOINTMENT_ID = ral.APPOINTMENTID
+    LEFT JOIN dcnd.REFERRALAUTHDIAGNOSISCODE rdiag  -- also: raleigh, tncpa, tng-athenaone, tng_athena_one
         ON rdiag.REFERRALAUTHID = ral.REFERRALID
-    LEFT JOIN raleigh.REFERRALAUTHPROCEDURECODE rproc
+    LEFT JOIN dcnd.REFERRALAUTHPROCEDURECODE rproc  -- also: raleigh, tncpa, tng-athenaone, tng_athena_one
         ON rproc.REFERRALAUTHID = ral.REFERRALID
 
     UNION ALL
 
     -- =============================================
     -- Source 2: REFERRALAUTHORIZATION
+    -- REFERRALAUTHORIZATION: dcnd, raleigh, tncpa, tng-athenaone
+    -- DOCUMENT:              dcnd, raleigh, tncpa 
+    -- NOTE: dcnd → NOTES = clinical_summary (raleigh → NOTES = requested_service)
     -- =============================================
     SELECT
-        rauth.REFERRALAUTHID                        AS referral_id,
-        NULL                                        AS ndid,
-        NULL                                        AS encounter_id,
-        NULL                                        AS referral_type,
-        NULL                                        AS referral_direction,
-        NULL                                        AS referral_status,
-        NULL                                        AS referral_priority,
-        NULL                                        AS referral_date,
-        NULL                                        AS scheduled_appointment_date,
-        NULL                                        AS appointment_id,
-        NULL                                        AS completed_date,
-        rauth.REFERRINGPROVIDERID                   AS referring_provider_id,
-        NULL                                        AS referring_provider_name,
-        NULL                                        AS referred_to_provider_id,
-        NULL                                        AS referred_to_provider_name,
-        rauth.REFERRALAUTHSPECIALTY                 AS referred_to_specialty,
-        NULL                                        AS referral_reason,
-        NULL                                        AS chief_complaint,
-        NULL                                        AS diagnosis_code,
-        NULL                                        AS service_procedure_code,
-        CASE
-            WHEN DATABASE() IN ('dcnd', 'tncpa', 'tng-athenaone', 'tng_athena_one')
-            THEN rauth.NOTES
-            ELSE NULL
-        END                                         AS clinical_summary,
-        CASE
-            WHEN DATABASE() IN ('raleigh')
-            THEN rauth.NOTES
-            ELSE NULL
-        END                                         AS requested_service,
-        rauth.REFERRALAUTHNUMBER                    AS authorization_required,
-        rauth.REFERRALAUTHID                        AS authorization_number,
-        NULL                                        AS patient_contacted,
-        NULL                                        AS specialist_report_received,
-        NULL                                        AS specialist_report_text,
-        NULL                                        AS follow_up_required,
-        NULL                                        AS referral_loop_closed,
-        NULL                                        AS out_of_network_flag,
-        NULL                                        AS patient_declined_flag,
-        'REFERRALAUTHORIZATION'                     AS data_source
+        rauth.REFERRALAUTHID                    AS referral_id,
+        NULL                                    AS ndid,
+        doc.CLINICALENCOUNTERID                 AS encounter_id,
+        NULL                                    AS referral_type,
+        NULL                                    AS referral_direction,
+        NULL                                    AS referral_status,
+        NULL                                    AS referral_priority,
+        NULL                                    AS referral_date,
+        NULL                                    AS scheduled_appointment_date,
+        NULL                                    AS appointment_id,
+        NULL                                    AS completed_date,
+        rauth.REFERRINGPROVIDERID               AS referring_provider_id,
+        NULL                                    AS referring_provider_name,
+        NULL                                    AS referred_to_provider_id,
+        NULL                                    AS referred_to_provider_name,
+        rauth.REFERRALAUTHSPECIALTY             AS referred_to_specialty,
+        NULL                                    AS referral_reason,
+        NULL                                    AS chief_complaint,
+        NULL                                    AS diagnosis_code,
+        NULL                                    AS service_procedure_code,
+        rauth.NOTES                             AS clinical_summary,   -- dcnd: NOTES = clinical_summary
+        NULL                                    AS requested_service,  -- raleigh only
+        rauth.REFERRALAUTHNUMBER                AS authorization_required,
+        rauth.REFERRALAUTHID                    AS authorization_number,
+        NULL                                    AS patient_contacted,
+        NULL                                    AS specialist_report_received,
+        NULL                                    AS specialist_report_text,
+        NULL                                    AS follow_up_required,
+        NULL                                    AS referral_loop_closed,
+        NULL                                    AS out_of_network_flag,
+        NULL                                    AS patient_declined_flag,
+        'REFERRALAUTHORIZATION'                 AS data_source
 
-    FROM raleigh.REFERRALAUTHORIZATION rauth
+    FROM dcnd.REFERRALAUTHORIZATION rauth           -- also: raleigh, tncpa
+    LEFT JOIN dcnd.DOCUMENT doc                     -- also: raleigh, tncpa 
+        ON doc.APPOINTMENTID = rauth.REFERRALAUTHID
 
 ) AS combined
 WHERE
@@ -353,12 +360,11 @@ WHERE
     OR authorization_required   IS NOT NULL
     OR authorization_number     IS NOT NULL;
 
-Comment:- All the tables for athenaone is same for all the schmeas so just need to change the schema name
+ALL THE TABLES ARE PRESENT IN tng_athena_one AND TNCPA SO JUST SWAP THE SCHEMA NAME EVERYTHING ELSE WILL BE SAME 
+
 
 --- GREENWAY SCHEMAWISE 
--- Schemas with all 3 tables: jwm, mind, savannah, savannah_staging
--- jwm_staging: missing ReferralsReferringProvider
--- mavenclad_shortlisted_mind: missing CareProviderSpecialty
+-- Schemas with all 3 tables: jwm, mind, savannah
 
 SELECT
     ipc.InsPreCertID                        AS referral_id,
